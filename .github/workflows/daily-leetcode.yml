@@ -1,0 +1,25 @@
+name: Daily LeetCode Problem
+
+on:
+  schedule:
+    - cron: "30 5 * * *"  # 11:00 AM IST (UTC+5:30)
+  workflow_dispatch:        # allow manual trigger
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install slack-sdk requests python-dotenv pytz
+
+      - name: Post daily problem
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: python post.py
