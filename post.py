@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -23,10 +24,23 @@ query questionOfToday {
       }
       acRate
       isPaidOnly
+      content
     }
   }
 }
 """
+
+
+def strip_html(html):
+    html = re.sub(r'<pre>(.*?)</pre>', lambda m: '\n```\n' + m.group(1) + '\n```\n', html, flags=re.DOTALL)
+    html = re.sub(r'<[^>]+>', '', html)
+    html = re.sub(r'&nbsp;', ' ', html)
+    html = re.sub(r'&lt;', '<', html)
+    html = re.sub(r'&gt;', '>', html)
+    html = re.sub(r'&amp;', '&', html)
+    html = re.sub(r'&quot;', '"', html)
+    html = re.sub(r'\n{3,}', '\n\n', html)
+    return html.strip()
 
 
 def fetch_daily_problem():
@@ -51,6 +65,9 @@ def build_message(problem_data):
     acceptance = f"{q['acRate']:.1f}%"
     date = problem_data["date"]
     is_paid = q["isPaidOnly"]
+    description = strip_html(q["content"] or "")
+    if len(description) > 2900:
+        description = description[:2900] + "...\n\n_(truncated — see full problem on LeetCode)_"
 
     emoji_map = {"Easy": ":large_green_circle:", "Medium": ":large_yellow_circle:", "Hard": ":red_circle:"}
     emoji = emoji_map.get(difficulty, ":white_circle:")
@@ -80,6 +97,11 @@ def build_message(problem_data):
         {
             "type": "section",
             "text": {"type": "mrkdwn", "text": f"*Topics:*\n{tags}"},
+        },
+        {"type": "divider"},
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": description},
         },
         {"type": "divider"},
         {
